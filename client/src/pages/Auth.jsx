@@ -6,9 +6,22 @@ import {motion} from "motion/react"
 import {BsRobot} from "react-icons/bs"
 import {IoSparkles} from "react-icons/io5"
 import {FcGoogle} from "react-icons/fc"
+import { signInWithPopup } from 'firebase/auth'
+import {auth,provider} from "../utils/firebase"
 
 
 const Auth = () => {
+
+  const handleGoogleAuth = async () =>{
+    try{
+      const response = await signInWithPopup(auth,provider)
+      console.log(response.user.email)
+      console.log(response.user.displayName)
+    }catch(error){
+      console.log(error)
+    }
+  }
+
   return (
     <div className='w-full min-h-screen bg-[#f3f3f3] flex items-center justify-center px-6 py-20'>
       <motion.div 
@@ -32,7 +45,8 @@ const Auth = () => {
             Sign in to start AI-powered mock interviews,
             track your progress, and unlock detailed performance insights.
         </p>
-        <motion.button 
+        <motion.button  
+        onClick={handleGoogleAuth}
         whileHover={{opacity:0.9, scale:1.03}}
         whileTap = {{opacity:1 , scale: 0.98}}
         className='w-full flex item-center justify-center gap-3 py-3 bg-black text-white rounded-full shadow-md'>
