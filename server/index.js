@@ -20,7 +20,7 @@ app.use(cors({
 // Routes 
 
 // Auth Routes
-app.use("/api/auth",authRouter)
+app.use("/api/auth",authRouter) 
 
 app.listen(PORT,()=>{
     console.log(`Server is listening to PORT : ${PORT}`)
