@@ -1,6 +1,7 @@
 import React from 'react'
 
 import {motion} from "motion/react"
+import axios from "axios"
 
 // Icons
 import {BsRobot} from "react-icons/bs"
@@ -8,6 +9,7 @@ import {IoSparkles} from "react-icons/io5"
 import {FcGoogle} from "react-icons/fc"
 import { signInWithPopup } from 'firebase/auth'
 import {auth,provider} from "../utils/firebase"
+import { ServerUrl } from '../App'
 
 
 const Auth = () => {
@@ -15,8 +17,12 @@ const Auth = () => {
   const handleGoogleAuth = async () =>{
     try{
       const response = await signInWithPopup(auth,provider)
-      console.log(response.user.email)
-      console.log(response.user.displayName)
+      let user = response.user
+      let name = user.displayName
+      let email = user.email
+
+      const result = await axios.post(ServerUrl + "/api/auth/google",{name,email},{withCredentials:true})
+      console.log(result.data)
     }catch(error){
       console.log(error)
     }
