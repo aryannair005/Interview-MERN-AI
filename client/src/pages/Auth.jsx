@@ -44,7 +44,7 @@ const Auth = (isModel = false) => {
       transition={{duration:1.05}}
       className = {`
         w-full 
-        ${isModel ?  "max-w-md p-8 rounded-3xl" : "max-w-lg p-12 rounded-[32px]"}
+        ${isModel ?  "max-w-md p-8 rounded-3xl" : "max-w-lg p-12 rounded-4xl"}
         bg-white shadow-2xl border border-gray-200
       `}>
         <div className='flex items-center justify-center gap-3 mb-6'>

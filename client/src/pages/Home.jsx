@@ -138,9 +138,9 @@ const Home = () => {
                   y: -5,
                 }}
                 className={`relative bg-white rounded-3xl border-2 border-green-100 hover:border-green-400 p-8 md:p-9 w-full sm:w-80 shadow-md hover:shadow-xl transition-all duration-300
-                  ${index === 0 ? "md:rotate-[-3deg]" : ""}
-                  ${index === 1 ? "md:rotate-[2deg] md:-mt-6" : ""}
-                  ${index === 2 ? "md:rotate-[-2deg]" : ""}
+                  ${index === 0 ? "md:-rotate-3" : ""}
+                  ${index === 1 ? "md:rotate-2 md:-mt-6" : ""}
+                  ${index === 2 ? "md:-rotate-2" : ""}
                 `}
               >
                 <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-white border-2 border-green-500 text-green-600 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg">
@@ -222,7 +222,7 @@ const Home = () => {
                       <img
                         src={item.image}
                         alt={item.title}
-                        className="w-full max-w-[240px] h-48 object-contain"
+                        className="w-full max-w-60 h-48 object-contain"
                       />
                     </div>
 
