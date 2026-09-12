@@ -3,6 +3,7 @@ import dotenv from "dotenv"
 import connectDB from "./config/connectDB.js"
 import authRouter from "./routes/auth.route.js"
 import userRouter from "./routes/user.route.js"
+import interviewRouter from "./routes/interview.route.js"
 import cookieParser from "cookie-parser";
 import cors from "cors"
 dotenv.config()
@@ -25,6 +26,9 @@ app.use("/api/auth",authRouter)
 
 // User Routes
 app.use("/api/user",userRouter)
+
+// Interview Routes
+app.use("/api/interview",interviewRouter)
 
 
 app.listen(PORT,()=>{
