@@ -1,6 +1,6 @@
 import fs from "fs"
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs"
-import {askAi} from "../services/openRouter.service"
+import {askAi} from "../services/openRouter.service.js"
 
 export const analyzeResume = async (req,res) => {
     try{
@@ -34,7 +34,7 @@ export const analyzeResume = async (req,res) => {
                 {
                 "role":"string",
                 "experience":"string",
-                "project":["project1","project2"],
+                "projects":["project1","project2"],
                 "skills":["skill1","skill2"]
                 }`
             },
