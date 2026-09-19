@@ -192,6 +192,108 @@ export const generateQuestion = async(req,res)=>{
             questions:interview.questions
         })
     }catch(error){
-        return res.status(500).json({message:error.message})
+        return res.status(500).json({message:`failed to create interview ${error}`})
+    }
+}
+
+export const submitAnswer = async (req,res) =>{
+    try{
+        let {interviewId,questionIndex,answer,timeTaken}  = req.body
+        const interview = await Interview.findById(interviewId)
+        const question = interview.questions[questionIndex]
+
+        if(!answer){
+            question.score = 0
+            question.feedback = "You did not submit an answer."
+            question.answer = ""
+            await interview.save()
+
+            return res.json({
+                feedback:question.feedback
+            })
+        }
+
+        if(timeTaken > question.timeLimit){
+            question.score = 0
+            question.feedback = "Time limit exceeded. Answer not evaluated."
+            question.answer = answer
+
+            await interview.save()
+
+            return res.json({
+                feedback:question.feedback
+            })
+        }
+
+        const messages = [
+            {
+        role: "system",
+        content: `
+            You are a professional human interviewer evaluating a candidate's answer in a real interview.
+
+            Evaluate naturally and fairly, like a real person would.
+
+            Score the answer in these areas (0 to 10):
+
+            1. Confidence – Does the answer sound clear, confident, and well-presented?
+            2. Communication – Is the language simple, clear, and easy to understand?
+            3. Correctness – Is the answer accurate, relevant, and complete?
+
+            Rules:
+            - Be realistic and unbiased.
+            - Do not give random high scores.
+            - If the answer is weak, score low.
+            - If the answer is strong and detailed, score high.
+            - Consider clarity, structure, and relevance.
+
+            Calculate:
+            finalScore = average of confidence, communication, and correctness (rounded to nearest whole number).
+
+            Feedback Rules:
+            - Write natural human feedback.
+            - 10 to 15 words only.
+            - Sound like real interview feedback.
+            - Can suggest improvement if needed.
+            - Do NOT repeat the question.
+            - Do NOT explain scoring.
+            - Keep tone professional and honest.
+
+            Return ONLY valid JSON in this format:
+
+            {
+            "confidence": number,
+            "communication": number,
+            "correctness": number,
+            "finalScore": number,
+            "feedback": "short human feedback"
+            }
+        `
+      }
+      ,
+      {
+        role: "user",
+        content: `
+            Question: ${question.question}
+            Answer: ${answer}
+        `
+      }
+        ]
+
+        const aiResponse = await askAi(messages)
+        const parsed = JSON.parse(aiResponse)
+
+
+        question.answer = answer 
+        question.confidence = parsed.confidence
+        question.communication = parsed.communication
+        question.correctness = parsed.correctness
+        question.score = parsed.finalScore
+        question.feedback = parsed.feedback
+
+        await interview.save()
+
+        return res.status(200).json({feedback:parsed.feedback})
+    }catch(error){
+        return res.status(500).json({message:`failed to submit answer ${error}`})
     }
 }
