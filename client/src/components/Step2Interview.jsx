@@ -27,8 +27,16 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
   const recognitionRef = useRef(null);
   const videoRef = useRef(null);
+  const isRecognizingRef = useRef(false);
+  const isMicOnRef = useRef(true);
+  const isMountedRef = useRef(true);
 
   const currentQuestion = questions[currentIndex];
+
+  const videoSource =
+    voiceGender === "male" ? maleVideo : femaleVideo;
+
+  /* -------------------- LOAD VOICES -------------------- */
 
   useEffect(() => {
     const loadVoices = () => {
@@ -67,6 +75,7 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     };
 
     loadVoices();
+
     window.speechSynthesis.onvoiceschanged = loadVoices;
 
     return () => {
@@ -74,8 +83,128 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     };
   }, []);
 
-  const videoSource =
-    voiceGender === "male" ? maleVideo : femaleVideo;
+  /* -------------------- SPEECH RECOGNITION SETUP -------------------- */
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.warn(
+        "Speech recognition is not supported in this browser."
+      );
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      isRecognizingRef.current = true;
+    };
+
+    recognition.onresult = (event) => {
+      if (!isMountedRef.current) return;
+
+      let transcript = "";
+
+      for (
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
+      ) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
+      }
+
+      if (transcript.trim()) {
+        setAnswer((prev) =>
+          `${prev} ${transcript}`.trim()
+        );
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.log(
+        "Speech recognition error:",
+        event.error
+      );
+
+      isRecognizingRef.current = false;
+
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
+        setIsMicOn(false);
+        isMicOnRef.current = false;
+      }
+    };
+
+    recognition.onend = () => {
+      isRecognizingRef.current = false;
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      isMountedRef.current = false;
+
+      isRecognizingRef.current = false;
+
+      try {
+        recognition.stop();
+        recognition.abort();
+      } catch {
+        // Already stopped
+      }
+
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  /* -------------------- START MIC -------------------- */
+
+  const startMic = () => {
+    if (
+      !recognitionRef.current ||
+      isAIPlaying ||
+      !isMicOnRef.current ||
+      isRecognizingRef.current
+    ) {
+      return;
+    }
+
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      console.log("Mic start error:", error);
+    }
+  };
+
+  /* -------------------- STOP MIC -------------------- */
+
+  const stopMic = () => {
+    if (!recognitionRef.current) return;
+
+    try {
+      recognitionRef.current.stop();
+    } catch {
+      // Already stopped
+    }
+
+    isRecognizingRef.current = false;
+  };
+
+  /* -------------------- TEXT TO SPEECH -------------------- */
 
   const speakText = (text) => {
     return new Promise((resolve) => {
@@ -90,20 +219,21 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         .replace(/,/g, ", ... ")
         .replace(/\./g, ". ... ");
 
-      const utterance = new SpeechSynthesisUtterance(humanText);
+      const utterance =
+        new SpeechSynthesisUtterance(humanText);
 
       utterance.voice = selectedVoice;
       utterance.rate = 0.92;
       utterance.pitch = 1.05;
       utterance.volume = 1;
 
-      utterance.onstart = () => {
-        setIsAIPlaying(true);
-        stopMic();
-        videoRef.current?.play().catch(() => {});
-      };
+      let resolved = false;
 
-      utterance.onend = () => {
+      const finishSpeech = () => {
+        if (resolved) return;
+
+        resolved = true;
+
         videoRef.current?.pause();
 
         if (videoRef.current) {
@@ -111,66 +241,94 @@ const Step2Interview = ({ interviewData, onFinish }) => {
         }
 
         setIsAIPlaying(false);
-
-        if (isMicOn) {
-          startMic();
-        }
-
-        setTimeout(() => {
-          setSubtitle("");
-          resolve();
-        }, 300);
-      };
-
-      utterance.onerror = () => {
-        setIsAIPlaying(false);
-
-        if (isMicOn) {
-          startMic();
-        }
-
         setSubtitle("");
+
+        if (isMicOnRef.current) {
+          setTimeout(() => {
+            startMic();
+          }, 200);
+        }
+
         resolve();
       };
 
+      utterance.onstart = () => {
+        setIsAIPlaying(true);
+
+        stopMic();
+
+        videoRef.current?.play().catch(() => {});
+      };
+
+      utterance.onend = () => {
+        finishSpeech();
+      };
+
+      utterance.onerror = () => {
+        finishSpeech();
+      };
+
       setSubtitle(text);
+
       window.speechSynthesis.speak(utterance);
     });
   };
 
+  /* -------------------- INTRO / QUESTIONS -------------------- */
+
   useEffect(() => {
     if (!selectedVoice) return;
 
-    const runIntro = async () => {
+    let cancelled = false;
+
+    const runInterviewSpeech = async () => {
+      if (cancelled) return;
+
       if (isIntroPhase) {
         await speakText(
           `Hi ${userName}, it's great to meet you today. I hope you're feeling confident and ready.`
         );
 
+        if (cancelled) return;
+
         await speakText(
-          `I'll ask you a few questions. Just answer naturally, and take your time. Let's begin`
+          `I'll ask you a few questions. Just answer naturally, and take your time. Let's begin.`
         );
+
+        if (cancelled) return;
 
         setIsIntroPhase(false);
       } else if (currentQuestion) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 800)
+        );
+
+        if (cancelled) return;
 
         if (currentIndex === questions.length - 1) {
           await speakText(
             "Alright, this one might be a bit more challenging."
           );
+
+          if (cancelled) return;
         }
 
         await speakText(currentQuestion.question);
-
-        if (isMicOn) {
-          startMic();
-        }
       }
     };
 
-    runIntro();
-  }, [selectedVoice, isIntroPhase, currentIndex]);
+    runInterviewSpeech();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedVoice,
+    isIntroPhase,
+    currentIndex,
+  ]);
+
+  /* -------------------- TIMER -------------------- */
 
   useEffect(() => {
     if (isIntroPhase || !currentQuestion) return;
@@ -193,68 +351,22 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     if (!isIntroPhase && currentQuestion) {
       setTimeleft(currentQuestion.timeLimit || 60);
     }
-  }, [currentIndex, isIntroPhase, currentQuestion]);
+  }, [
+    currentIndex,
+    isIntroPhase,
+    currentQuestion,
+  ]);
 
-  useEffect(() => {
-    if (!("webkitSpeechRecognition" in window)) {
-      console.warn("Speech recognition is not supported in this browser.");
-      return;
-    }
-
-    const recognition = new window.webkitSpeechRecognition();
-
-    recognition.lang = "en-US";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onresult = (event) => {
-      const transcript =
-        event.results[event.results.length - 1][0].transcript;
-
-      setAnswer((prev) => `${prev} ${transcript}`.trim());
-    };
-
-    recognition.onerror = (event) => {
-      console.log("Speech recognition error:", event.error);
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      try {
-        recognition.stop();
-        recognition.abort();
-      } catch {
-        // Already stopped
-      }
-    };
-  }, []);
-
-  const startMic = () => {
-    if (!recognitionRef.current || isAIPlaying) return;
-
-    try {
-      recognitionRef.current.start();
-    } catch {
-      // Recognition may already be running
-    }
-  };
-
-  const stopMic = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {
-        // Recognition may already be stopped
-      }
-    }
-  };
+  /* -------------------- TOGGLE MIC -------------------- */
 
   const toggleMic = () => {
     if (isMicOn) {
       stopMic();
+
+      isMicOnRef.current = false;
       setIsMicOn(false);
     } else {
+      isMicOnRef.current = true;
       setIsMicOn(true);
 
       if (!isAIPlaying) {
@@ -263,10 +375,13 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     }
   };
 
+  /* -------------------- SUBMIT ANSWER -------------------- */
+
   const submitAnswer = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !currentQuestion) return;
 
     stopMic();
+
     setIsSubmitting(true);
 
     try {
@@ -276,7 +391,8 @@ const Step2Interview = ({ interviewData, onFinish }) => {
           interviewId,
           questionIndex: currentIndex,
           answer,
-          timeTaken: currentQuestion.timeLimit - timeleft,
+          timeTaken:
+            currentQuestion.timeLimit - timeleft,
         },
         {
           withCredentials: true,
@@ -287,19 +403,31 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
       await speakText(result.data.feedback);
 
-      setIsSubmitting(false);
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
     } catch (error) {
-      console.log("Submit Answer Error:", error);
+      console.log(
+        "Submit Answer Error:",
+        error.response?.data || error.message
+      );
+
       setIsSubmitting(false);
     }
   };
 
+  /* -------------------- NEXT QUESTION -------------------- */
+
   const handleNext = async () => {
+    if (isSubmitting) return;
+
+    stopMic();
+
     setAnswer("");
     setFeedback("");
 
     if (currentIndex + 1 >= questions.length) {
-      finishInterview();
+      await finishInterview();
       return;
     }
 
@@ -310,46 +438,79 @@ const Step2Interview = ({ interviewData, onFinish }) => {
     setCurrentIndex((prev) => prev + 1);
   };
 
+  /* -------------------- FINISH INTERVIEW -------------------- */
+
   const finishInterview = async () => {
     stopMic();
+
+    isMicOnRef.current = false;
     setIsMicOn(false);
 
     try {
       const result = await axios.post(
         ServerUrl + "/api/interview/finish",
-        { interviewId },
-        { withCredentials: true }
+        {
+          interviewId,
+        },
+        {
+          withCredentials: true,
+        }
       );
 
       console.log(result.data);
+
       onFinish(result.data);
     } catch (error) {
-      console.log("Finish Interview Error:", error);
+      console.log(
+        "Finish Interview Error:",
+        error.response?.data || error.message
+      );
     }
   };
 
-  useEffect(() => {
-    if (isIntroPhase || !currentQuestion) return;
+  /* -------------------- AUTO SUBMIT WHEN TIMER ENDS -------------------- */
 
-    if (timeleft === 0 && !isSubmitting && !feedback) {
+  useEffect(() => {
+    if (
+      isIntroPhase ||
+      !currentQuestion ||
+      isSubmitting ||
+      feedback
+    ) {
+      return;
+    }
+
+    if (timeleft === 0) {
       submitAnswer();
     }
-  }, [timeleft]);
+  }, [
+    timeleft,
+    isIntroPhase,
+    currentQuestion,
+    isSubmitting,
+    feedback,
+  ]);
+
+  /* -------------------- CLEANUP -------------------- */
 
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-          recognitionRef.current.abort();
-        } catch {
-          // Already stopped
-        }
+      isMountedRef.current = false;
+
+      isRecognizingRef.current = false;
+
+      try {
+        recognitionRef.current?.stop();
+        recognitionRef.current?.abort();
+      } catch {
+        // Already stopped
       }
 
       window.speechSynthesis.cancel();
     };
   }, []);
+
+  /* -------------------- UI -------------------- */
 
   return (
     <div className="min-h-screen bg-linear-to-br from-emerald-50 via-white to-teal-100 flex items-center justify-center p-4 sm:p-6">
@@ -396,7 +557,9 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             <div className="flex justify-center">
               <Timer
                 timeLeft={timeleft}
-                totalTime={currentQuestion?.timeLimit || 60}
+                totalTime={
+                  currentQuestion?.timeLimit || 60
+                }
               />
             </div>
 
@@ -438,7 +601,8 @@ const Step2Interview = ({ interviewData, onFinish }) => {
             <div className="relative mb-6 bg-gray-50 p-4 sm:p-6 rounded-2xl border border-gray-200 shadow-sm">
 
               <p className="text-xs sm:text-sm text-gray-400 mb-2">
-                Question {currentIndex + 1} of {questions.length}
+                Question {currentIndex + 1} of{" "}
+                {questions.length}
               </p>
 
               <div className="text-base sm:text-lg font-semibold text-gray-800 leading-relaxed">
@@ -450,7 +614,9 @@ const Step2Interview = ({ interviewData, onFinish }) => {
 
           <textarea
             placeholder="Type your answer here..."
-            onChange={(e) => setAnswer(e.target.value)}
+            onChange={(e) =>
+              setAnswer(e.target.value)
+            }
             value={answer}
             className="flex-1 bg-gray-100 p-4 sm:p-6 rounded-2xl resize-none outline-none border border-gray-200 focus:ring-2 focus:ring-emerald-500 transition text-gray-800"
           />

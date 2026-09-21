@@ -266,7 +266,7 @@ const Step3Report = ({report}) => {
                       <p className='font-semibold text-gray-800 text-sm sm:text-base leading-relaxed'>{q.question || "Question not available"}</p>
                     </div>
 
-                    <div className='bg-green-100 text-green-600 px-3 py-1 rouded-full font-bold text-xs sm:text-sm w-fit'>{q.score}</div>
+                    <div className='bg-green-100 text-green-600 px-3 py-1 rounded-full font-bold text-xs sm:text-sm w-fit'>{q.score}</div>
                   </div>
                   <div className='bg-green-50 border border-green-200 p-4 rounded-lg'>
                     <p className='text-xs text-green-600 font-semibold mb-1'>AI</p>
