@@ -105,6 +105,9 @@ const Pricing = () => {
                 })}
               </div>
 
+              {!plan.default && 
+                <button className={`w-full mt-8 py-3 rounded-xl font-semibold transition ${isSelected?"bg-emerald-600 text-white hover:opacity-90":"bg-gray-100 text-gray-700 hover:bg-emerald-50"}`}>{isSelected?"proceed to pay":"Select Plan"}</button>
+              }
             </motion.div>
           )
         })}
