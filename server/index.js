@@ -32,7 +32,7 @@ app.use("/api/user",userRouter)
 app.use("/api/interview",interviewRouter)
 
 // Payment Routes
-app.use("/api/pay",paymentRouter)
+app.use("/api/payment",paymentRouter)
 
 
 app.listen(PORT,()=>{
