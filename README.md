@@ -1,7 +1,5 @@
 ## 🏗️ Architecture
 
-![InterviewIQ.AI System Architecture](./docs/architecture.svg)
-
 
 
 ```
