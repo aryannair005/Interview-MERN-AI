@@ -1,73 +1,8 @@
-# InterviewIQ.AI
-
-AI-powered mock interview platform built with the MERN stack. InterviewIQ.AI analyzes a candidate's resume, generates role- and experience-specific interview questions, conducts a timed voice-assisted interview, evaluates answers with AI, and stores performance history.
-
-## ✨ Features
-
-- **AI-powered mock interviews** with role and experience-based question generation
-- **Technical and HR interview modes**
-- **Resume analysis** — upload a PDF and extract role, experience, projects, skills, and resume text
-- **AI-generated interview questions** with progressive difficulty
-- **Voice-assisted interview experience**
-  - Browser Speech Recognition for spoken answers
-  - Browser Speech Synthesis for AI interviewer voice
-  - Male/female interviewer video selection
-- **Timed questions** with automatic submission when the timer expires
-- **AI answer evaluation**
-  - Confidence
-  - Communication
-  - Correctness
-  - Final score
-  - Short interviewer-style feedback
-- **Interview reports and analytics**
-  - Overall score
-  - Skill-wise evaluation
-  - Question-by-question breakdown
-  - Performance trend chart
-- **Interview history** for previously completed sessions
-- **PDF report export**
-- **Credit-based usage system**
-- **Razorpay payments** for purchasing additional credits
-- **Google authentication** with JWT-based session handling
-- Responsive UI with Tailwind CSS and Motion animations
-
-## 🧰 Tech Stack
-
-### Frontend
-
-- React 19
-- Vite
-- React Router
-- Redux Toolkit
-- Axios
-- Tailwind CSS
-- Motion
-- Recharts
-- React Circular Progressbar
-- jsPDF + jsPDF AutoTable
-- React Icons
-- Firebase Authentication
-
-### Backend
-
-- Node.js
-- Express 5
-- MongoDB
-- Mongoose
-- JWT
-- Cookie Parser
-- CORS
-- Multer
-- PDF.js
-- Axios
-
-### AI & Payments
-
-- OpenRouter API
-- OpenAI GPT-4o-mini through OpenRouter
-- Razorpay
-
 ## 🏗️ Architecture
+
+![InterviewIQ.AI System Architecture](./docs/architecture.svg)
+
+
 
 ```
 ┌───────────────────────────────┐
